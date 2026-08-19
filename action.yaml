@@ -1,0 +1,51 @@
+---
+name: "synthesize-changelog-entry"
+description: "Resolves a ref's changelog manifest and reports its entry, feature-build marker and route."
+inputs:
+  changelog_dir:
+    description: >-
+      Directory holding per-pull-request changelog files. A file there is one of
+      the two authoring routes; the other is a `## CHANGELOG` section in the
+      pull-request body.
+    required: false
+    default: .changelog
+  pr:
+    description: >-
+      The pull request whose manifest applies. Leave unset and one is resolved
+      from the ref: none open means there is no body to read and the file is the
+      whole manifest; more than one open is an error rather than a guess.
+    required: false
+    default: ""
+  require_entry:
+    description: >-
+      Whether the absence of a manifest is an error. True for a merge gate or an
+      assembly, where a release note nobody wrote is a release note nobody
+      reviewed. False for a build, which only wants to know whether a marker is
+      present — a branch with nothing to say is an ordinary build.
+    required: false
+    default: "true"
+outputs:
+  entry:
+    description: "The changelog entry, with any feature-build marker removed. Empty when there is none and `require_entry` is false."
+    value: ${{ steps.synthesize.outputs.entry }}
+  marker:
+    description: "The feature-build marker the manifest carries, or empty for an ordinary build."
+    value: ${{ steps.synthesize.outputs.marker }}
+  route:
+    description: "Which route the manifest came by: `file`, `body`, or `none`."
+    value: ${{ steps.synthesize.outputs.route }}
+  pr:
+    description: "The pull request the manifest was read from, or empty when the ref has none."
+    value: ${{ steps.synthesize.outputs.pr }}
+runs:
+  using: "composite"
+  steps:
+    - id: synthesize
+      name: "Resolve the changelog manifest"
+      shell: bash
+      env:
+        CHANGELOG_DIR: ${{ inputs.changelog_dir }}
+        PR: ${{ inputs.pr }}
+        REQUIRE_ENTRY: ${{ inputs.require_entry }}
+        GH_TOKEN: ${{ env.GH_TOKEN || github.token }}
+      run: ${{ github.action_path }}/synthesize.sh

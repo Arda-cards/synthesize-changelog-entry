@@ -1,0 +1,4 @@
+# Every path is owned. Code-owner review is therefore required on every pull
+# request, including changes to the machinery in .github/ that enforces the
+# rest — so the rules can only be changed by the process the rules describe.
+* @Arda-cards/engineering

@@ -1,0 +1,84 @@
+---
+name: ci
+on:
+  push:
+  pull_request:
+    types: [ opened, ready_for_review, reopened, synchronize ]
+
+permissions: { }
+
+jobs:
+  lint:
+    if: ${{ ! github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: cat .github/super-linter.env >> "$GITHUB_ENV"
+      - uses: super-linter/super-linter@v8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  is-target-branch-protected:
+    if: ${{ ! github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    outputs:
+      yes: ${{ steps.gh-query.outputs.validate_in_list }}
+    steps:
+      - name: "Check branch protection status"
+        id: gh-query
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "${RUNNER_DEBUG}" == 1 ] && set -xv
+          set -u
+
+          if gh ruleset check --repo "${GITHUB_REPOSITORY}" "${GITHUB_BASE_REF:-$GITHUB_REF_NAME}" \
+            | grep -q context:validate-release; \
+          then
+            echo "validate_in_list=true" >>"${GITHUB_OUTPUT}"
+          fi
+  validate-release:
+    if: ${{ needs.is-target-branch-protected.outputs.yes }}
+    needs: is-target-branch-protected
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: "Extract tag from the changelog"
+        uses: denisa/clq-action@v1
+        id: clq-extract
+        with:
+          changeMap: .github/clq/changemap.json
+          mode: release
+      - uses: denisa/semantic-tag-helper@v1
+        with:
+          mode: test
+          tag: ${{ steps.clq-extract.outputs.tag }}
+  tag:
+    if: github.event_name == 'push'
+    needs: [ lint, validate-release ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      deployments: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denisa/clq-action@v1
+        id: clq-extract
+        with:
+          changeMap: .github/clq/changemap.json
+      - uses: denisa/semantic-tag-helper@v1
+        with:
+          mode: set
+          tag: ${{ steps.clq-extract.outputs.tag }}
+      - uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.clq-extract.outputs.tag }}
+          prerelease: ${{ steps.clq-extract.outputs.status == 'prereleased' }}
+          name: ${{ steps.clq-extract.outputs.name }}
+          body: ${{ steps.clq-extract.outputs.changes }}
