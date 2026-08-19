@@ -56,15 +56,15 @@ The job needs `pull-requests: read`, and `contents: read` for the file route.
 ## The rules it enforces
 
 1. **Exactly one route.** A file and a body section together is an error — there is no
-   precedence rule and no silent winner.
+    precedence rule and no silent winner.
 2. **One manifest, one marker.** Checked on the marker as well as on the entry, since a file
-   carrying frontmatter but no entry would otherwise slip past.
+    carrying frontmatter but no entry would otherwise slip past.
 3. **Ambiguity is more than one marker, not more than one file.** A queue batch stages
-   several branches' files side by side and every one of them is legitimate.
+    several branches' files side by side and every one of them is legitimate.
 4. **A ref with no open pull request has no body.** The file is the whole manifest. More than
-   one open pull request is an error rather than a guess.
+    one open pull request is an error rather than a guess.
 5. **The marker never reaches `CHANGELOG.md`.** It is read and stripped in the same place, by
-   both routes, because it is configuration for the pipeline rather than a release note.
+    both routes, because it is configuration for the pipeline rather than a release note.
 
 ## Comments come to whoever reads this next
 
