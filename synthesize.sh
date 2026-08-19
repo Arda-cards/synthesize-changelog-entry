@@ -199,6 +199,26 @@ else
 fi
 
 readonly marker="${file_marker:-${pr_marker}}"
+
+# The marker is author-written and ends up in a version string, so its shape is
+# checked here rather than by each consumer.
+#
+# `<user>-<ticket>`, which is the shape the feature version needs: the
+# publishing action's version regex requires exactly two alphanumeric segments
+# after the version. A marker that does not match it produces no version, and
+# the build then reports an ordinary build with nothing said about the marker
+# the author wrote — a silent degradation this turns into a stated error.
+#
+# Newlines cannot reach here: the marker is read from a single line by awk. It
+# is the space and the slash that matter, which yield a version no registry will
+# accept.
+if [ -n "${marker}" ] && ! [[ "${marker}" =~ ^[A-Za-z0-9]+-[A-Za-z0-9]+$ ]]; then
+  # Reported through a sanitised copy: the raw value is exactly what is not
+  # trusted, and it is about to be printed.
+  printable="$(tr -cd '[:alnum:][:punct:] ' <<<"${marker}" | cut -c1-40)"
+  fail "\"${printable}\" is not a usable feature-build marker; use <user>-<ticket>, letters and digits only"
+fi
+
 if [ -n "${marker}" ]; then
   echo "::notice::feature build marked as ${marker}"
 fi

@@ -25,6 +25,10 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
 - The message shown when no changelog entry is found names the pull-request *body* as the
   route, which is where the section belongs. It previously said "the pull request", which
   reads as though a section anywhere on it would do.
+- A feature-build marker is rejected unless it is `<user>-<ticket>` shaped. The marker is
+  author-written and becomes part of a version, so one containing a space or a slash used to
+  yield a version no registry accepts. It also failed the publishing action's version regex,
+  which produced an ordinary build and said nothing about the marker the author had written.
 
 ## [1.0.0] - 2026-08-19
 
