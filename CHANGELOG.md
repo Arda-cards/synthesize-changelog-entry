@@ -27,7 +27,7 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
   reads as though a section anywhere on it would do.
 - A feature-build marker is rejected unless it is `<user>-<ticket>` shaped. The marker is
   author-written and becomes part of a version, so one containing a space or a slash used to
-  yield a version no registry accepts. It also failed the publishing action's version regex,
+  yield a version no registry accepts. It also failed the publishing action's version pattern,
   which produced an ordinary build and said nothing about the marker the author had written.
 
 ## [1.0.0] - 2026-08-19
