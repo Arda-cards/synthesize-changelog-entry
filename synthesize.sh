@@ -194,7 +194,7 @@ else
   route=none
   entry=''
   if [ "${require_entry}" == "true" ]; then
-    fail "no changelog entry: add a ## CHANGELOG section to the pull request, or a ${changelog_dir}/ file"
+    fail "no changelog entry: add a ## CHANGELOG section to the pull-request body, or a ${changelog_dir}/ file"
   fi
 fi
 

@@ -18,6 +18,14 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
   - `Fixed` for any bugfixes.
   - `Security` in case of vulnerabilities.
 
+## [1.0.1] - 2026-08-19
+
+### Fixed
+
+- The message shown when no changelog entry is found names the pull-request *body* as the
+  route, which is where the section belongs. It previously said "the pull request", which
+  reads as though a section anywhere on it would do.
+
 ## [1.0.0] - 2026-08-19
 
 ### Added
