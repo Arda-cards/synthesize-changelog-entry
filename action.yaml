@@ -16,6 +16,17 @@ inputs:
       whole manifest; more than one open is an error rather than a guess.
     required: false
     default: ""
+  prs:
+    description: >-
+      Several pull requests to resolve, whitespace- or comma-separated. Read
+      `entries` for the results; the singular outputs describe the first.
+
+      This exists so that a caller needing one answer per pull request — an
+      assembly composing a release from every merge in a range — asks for them,
+      rather than checking this repository out and calling the script this
+      action wraps around a loop of its own. Mutually exclusive with `pr`.
+    required: false
+    default: ""
   require_entry:
     description: >-
       Whether the absence of a manifest is an error. True for a merge gate or an
@@ -25,6 +36,12 @@ inputs:
     required: false
     default: "true"
 outputs:
+  entries:
+    description: >-
+      Every resolved manifest, as a JSON array of `{pr, entry, marker, route}`.
+      Always set, and holds exactly one element when a single manifest was asked
+      for.
+    value: ${{ steps.synthesize.outputs.entries }}
   entry:
     description: "The changelog entry, with any feature-build marker removed. Empty when there is none and `require_entry` is false."
     value: ${{ steps.synthesize.outputs.entry }}
@@ -46,6 +63,7 @@ runs:
       env:
         CHANGELOG_DIR: ${{ inputs.changelog_dir }}
         PR: ${{ inputs.pr }}
+        PRS: ${{ inputs.prs }}
         REQUIRE_ENTRY: ${{ inputs.require_entry }}
         GH_TOKEN: ${{ env.GH_TOKEN || github.token }}
       run: ${{ github.action_path }}/synthesize.sh

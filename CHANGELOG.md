@@ -18,7 +18,15 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
   - `Fixed` for any bugfixes.
   - `Security` in case of vulnerabilities.
 
-## [1.0.2] - 2026-08-19
+## [1.1.0] - 2026-08-19
+
+### Added
+
+- `prs`, naming several pull requests to resolve, and `entries`, reporting each as a JSON
+  object. An assembly composing a release from every merge in a range needs one answer per
+  pull request; without this it had to check this repository out and call the script the
+  action wraps around a loop of its own, which reaches past the action's interface into its
+  implementation.
 
 ### Fixed
 
@@ -32,6 +40,12 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
   ambiguous as two manifests each carrying one.
 - The error raised when both routes carry a marker names the file that actually carries it,
   rather than whichever file sorted first.
+- Reading the markers out of a manifest reports a failure of its own rather than an empty
+  result, so a parser that could not run is no longer indistinguishable from a manifest that
+  carries no marker.
+- The changelog directory is matched as a literal path rather than as a pattern. The default
+  is `.changelog`, whose leading dot matched any character, so a path such as
+  `achangelog/entry.md` was taken for a changelog entry.
 
 ## [1.0.1] - 2026-08-19
 
