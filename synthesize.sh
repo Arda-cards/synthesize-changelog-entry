@@ -39,18 +39,34 @@ extract_section() {
   '
 }
 
-# Reads to end and prints the first match rather than quitting on it. An early
-# exit closes the pipe under the producer, and `set -o pipefail` then kills the
-# script with no diagnosis at all.
-marker_value() {
+# Prints every `feature-build:` value it finds, one per line, so that a manifest
+# carrying more than one is visible to the caller rather than resolved by "first
+# wins". Ambiguity is more than one marker, and two markers in one manifest is
+# just as ambiguous as two manifests each carrying one.
+#
+# It reads to end rather than quitting on the first match. An early exit closes
+# the pipe under the producer, and `set -o pipefail` then kills the script with
+# no diagnosis at all.
+marker_values() {
   awk '
-    v == "" && match($0, /^feature-build:[[:space:]]*/) {
+    match($0, /^feature-build:[[:space:]]*/) {
       v = substr($0, RLENGTH + 1)
       gsub(/^"|"$/, "", v)
       gsub(/[[:space:]]+$/, "", v)
+      print v
     }
-    END { print v }
   '
+}
+
+# One value from one manifest, or a stated error. `${2}` names the manifest for
+# the diagnosis.
+single_marker() {
+  local -a found
+  mapfile -t found < <(marker_values <<<"${1}")
+  if [ "${#found[@]}" -gt 1 ]; then
+    fail "${2} carries ${#found[@]} feature-build lines; a manifest carries at most one"
+  fi
+  printf '%s' "${found[0]:-}"
 }
 
 # The marker is configuration for the pipeline, not a release note, so it is
@@ -68,7 +84,16 @@ blank() { [ -z "$(tr -d '[:space:]' <<<"${1}")" ]; }
 
 if [ -z "${pr}" ]; then
   readonly branch="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
-  mapfile -t open < <(gh pr list --head "${branch}" --state open --json number --jq '.[].number')
+
+  # Captured before it is split. Inside a process substitution a failing `gh` —
+  # expired token, network, wrong repository — yields an empty list that is
+  # indistinguishable from "this branch has no pull request", and the body route
+  # then disappears without a word.
+  if ! listed="$(gh pr list --head "${branch}" --state open --json number --jq '.[].number')"; then
+    fail "could not list pull requests for ${branch}; refusing to guess that it has none"
+  fi
+  open=()
+  [ -n "${listed}" ] && mapfile -t open <<<"${listed}"
 
   if [ "${#open[@]}" -gt 1 ]; then
     fail "branch ${branch} has ${#open[@]} open pull requests (${open[*]}); which manifest applies is ambiguous"
@@ -86,8 +111,13 @@ readonly pr
 # it is what the branch *carries*, because there is no diff to consult.
 
 if [ -n "${pr}" ]; then
+  # Same reason as above: a failing `gh pr diff` inside a process substitution
+  # would read as "this pull request adds no changelog file".
+  if ! diffed="$(gh pr diff "${pr}" --name-only)"; then
+    fail "could not read the file list of #${pr}; refusing to guess that it changes none"
+  fi
   mapfile -t files < <(
-    gh pr diff "${pr}" --name-only |
+    printf '%s\n' "${diffed}" |
       { grep -E "^${changelog_dir}/.+\.md$" || true; } |
       { grep -v "^${changelog_dir}/README\.md$" || true; }
   )
@@ -112,7 +142,7 @@ for f in "${files[@]}"; do
   [ -r "${f}" ] || continue
   [ "$(head -n1 "${f}")" == "---" ] || continue
   frontmatter="$(sed -n '2,/^---$/p' "${f}")"
-  found="$(marker_value <<<"${frontmatter}")"
+  found="$(single_marker "${frontmatter}" "${f}")"
   if [ -n "${found}" ]; then
     marked+=("${f}")
     file_marker="${found}"
@@ -162,11 +192,17 @@ if [ -n "${pr}" ]; then
   pr_section="${comment_section:-${body_section}}"
 fi
 
-readonly pr_marker="$(printf '%s\n' "${pr_section}" | marker_value)"
+# Assigned before it is made readonly, deliberately. `readonly x="$(cmd)"` is a
+# single builtin invocation whose status is the builtin's, not the command's, so
+# a failure inside the substitution is swallowed and `set -e` never sees it —
+# which turned "this manifest carries two markers" into "it carries none".
+pr_marker="$(single_marker "${pr_section}" "the ## CHANGELOG section of #${pr}")"
+readonly pr_marker
 # Removing the marker line leaves the blank that surrounded it, which would be
 # carried verbatim into CHANGELOG.md. Trim leading blanks so the entry starts at
 # its first category heading whichever route it came by.
-readonly pr_entry="$(printf '%s\n' "${pr_section}" | strip_marker | sed '/./,$!d')"
+pr_entry="$(printf '%s\n' "${pr_section}" | strip_marker | sed '/./,$!d')"
+readonly pr_entry
 
 # --- exactly one route -------------------------------------------------------
 
@@ -177,7 +213,7 @@ fi
 # One manifest, so one marker. The route check compares *entries*, and a file
 # holding frontmatter but no entry would slip past it.
 if [ -n "${file_marker}" ] && [ -n "${pr_marker}" ]; then
-  fail "a feature-build marker is present in both ${files[0]} and the ## CHANGELOG section; use one route, not both"
+  fail "a feature-build marker is present in both ${marked[0]} and the ## CHANGELOG section; use one route, not both"
 fi
 
 # --- report -------------------------------------------------------------------

@@ -18,6 +18,21 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
   - `Fixed` for any bugfixes.
   - `Security` in case of vulnerabilities.
 
+## [1.0.2] - 2026-08-19
+
+### Fixed
+
+- A failure to reach GitHub is reported instead of being read as an answer. Listing a
+  branch's pull requests, or reading a pull request's file list, was done inside a process
+  substitution, where a failing call yields an empty result indistinguishable from "there
+  is no pull request" or "it changes no files" — so an expired token quietly removed the
+  body route and produced an ordinary build.
+- A manifest carrying more than one `feature-build:` line is rejected rather than resolved
+  by first-wins. Ambiguity is more than one marker, and two markers in one manifest are as
+  ambiguous as two manifests each carrying one.
+- The error raised when both routes carry a marker names the file that actually carries it,
+  rather than whichever file sorted first.
+
 ## [1.0.1] - 2026-08-19
 
 ### Fixed
