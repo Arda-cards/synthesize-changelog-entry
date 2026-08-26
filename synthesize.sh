@@ -131,9 +131,17 @@ resolve_manifest() {
   # With a pull request the manifest is what the pull request *adds*; without
   # one it is what the branch *carries*, because there is no diff to consult.
   if [ -n "${pr}" ]; then
-    # Same reason as the listing above: a failing `gh pr diff` inside a process
-    # substitution would read as "this pull request adds no changelog file".
-    if ! diffed="$(gh pr diff "${pr}" --name-only)"; then
+    # The paginated files listing rather than `gh pr diff --name-only`: the
+    # diff media type is refused outright (HTTP 406) once a pull request
+    # exceeds 20,000 diff lines, so the pull requests most in need of a
+    # correct manifest — a consolidated stack landing as one merge — were
+    # exactly the ones this could not read. The files endpoint pages through
+    # any size and names the same net-diff paths.
+    #
+    # Captured with its status checked, same reason as the listing above: a
+    # failing `gh` inside a process substitution would read as "this pull
+    # request adds no changelog file".
+    if ! diffed="$(gh api "repos/{owner}/{repo}/pulls/${pr}/files" --paginate --jq '.[].filename')"; then
       fail "could not read the file list of #${pr}; refusing to guess that it changes none"
     fi
     # Matched as a literal path rather than interpolated into an expression.

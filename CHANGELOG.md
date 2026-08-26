@@ -18,6 +18,16 @@ Categories, defined in [changemap.json](.github/clq/changemap.json):
   - `Fixed` for any bugfixes.
   - `Security` in case of vulnerabilities.
 
+## [1.1.1] - 2026-08-26
+
+### Fixed
+
+- The file route of a pull request whose diff exceeds GitHub's 20,000-line cap now resolves:
+  the file list is read from the paginated files endpoint instead of the diff media type,
+  which the API refuses outright (HTTP 406) for such pull requests. A consolidated stack
+  landing as a single merge is exactly the shape that hit this — and it hit the merge gate,
+  the build, and post-merge assembly alike.
+
 ## [1.1.0] - 2026-08-19
 
 ### Added
